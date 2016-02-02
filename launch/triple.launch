@@ -1,0 +1,15 @@
+<launch>
+
+  <node name="K1_saver" pkg="save_data" type="saver" ns="K1">
+    <param  name="base_name" value="K1"  />
+  </node>
+
+  <node name="K2_saver" pkg="save_data" type="saver" ns="K2">
+    <param  name="base_name" value="K2"  />
+  </node>
+
+  <node name="K3_saver" pkg="save_data" type="saver" ns="K3">
+    <param  name="base_name" value="K3"  />
+  </node>
+
+</launch>

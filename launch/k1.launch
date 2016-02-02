@@ -1,0 +1,8 @@
+<launch>
+
+  <node name="K1_saver" pkg="save_data" type="saver" ns="K1">
+    <param  name="base_name" value="K1"  />
+  </node>
+
+
+</launch>
