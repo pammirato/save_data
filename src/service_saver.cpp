@@ -60,7 +60,7 @@
 #include <kinect2_bridge/kinect2_definitions.h>
 
 #include <std_srvs/Empty.h>
-
+#include "rosaria/float_message.h"
 
 class Receiver
 {
@@ -74,7 +74,7 @@ public:
 
 private:
 
-  std::string base_save_path = "/playpen/ammirato/Data/Test/";
+  std::string base_save_path = "/playpen/ammirato/Data/Density/";
 
   std::string scene_name;
   std::string node_name;
@@ -127,12 +127,13 @@ private:
   ofstream slam_odom_outfile;
   std::string topicSlamOdom;
 
+  double cluster_id;
 
 public:
-  Receiver(const std::string &topicColor, const std::string &topicDepth,const std::string topicSlamOdomparam, const bool useExact, const bool useCompressed, const std::string scene_name_param, const std::string node_name_param,const std::string base_name_param)
+  Receiver(const std::string &topicColor, const std::string &topicDepth,const std::string topicSlamOdomparam, const bool useExact, const bool useCompressed, const std::string scene_name_param, const std::string node_name_param,const std::string base_name_param, int frame_param)
     : topicColor(topicColor), topicDepth(topicDepth), useExact(useExact), useCompressed(useCompressed),
-      updateImage(false), updateCloud(false), save(false), running(false), frame(0), queueSize(5),
-      nh("~"), spinner(0), it(nh), mode(CLOUD),save_data(false), slam_x(-1),slam_y(-1),slam_z(-1),slam_orientation(-1)
+      updateImage(false), updateCloud(false), save(false), running(false), frame(1), queueSize(5),
+      nh("~"), spinner(0), it(nh), mode(CLOUD),save_data(false), slam_x(-1),slam_y(-1),slam_z(-1),slam_orientation(-1), cluster_id(-1)
   {
     cameraMatrixColor = cv::Mat::zeros(3, 3, CV_64F);
     cameraMatrixDepth = cv::Mat::zeros(3, 3, CV_64F);
@@ -157,6 +158,8 @@ public:
     slam_odom_outfile.open(base_save_path + scene_name + "/slam_odom.txt",ios::out | ios::app);
 
     topicSlamOdom = topicSlamOdomparam;
+
+    frame = frame_param;
 
   }
 
@@ -269,11 +272,14 @@ private:
     }
   }
 
-  bool save_callback(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response)
+
+ // bool save_callback(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response)
+  bool save_callback(rosaria::float_message::Request& request, rosaria::float_message::Response& response)
   {
     ROS_INFO("SAVE SERVICE");
     lock.lock();
     save_data  = true;
+    cluster_id = request.input;
     lock.unlock();
     return true;
   }
@@ -283,7 +289,7 @@ private:
 
   void slam_odom_callback(const nav_msgs::Odometry::ConstPtr odom_msg)
   {
-    ROS_INFO("SLAM ODOM CALLBACK"); 
+    //ROS_INFO("SLAM ODOM CALLBACK"); 
     double x = odom_msg->pose.pose.position.x;
     double y = odom_msg->pose.pose.position.y;
     double z = odom_msg->pose.pose.position.z;
@@ -625,7 +631,7 @@ private:
 
 
 //    odom_outfile << colorName << " " << x << " " << y << " " << z << " " << orientation << std::endl; 
-    odom_outfile << colorName << " " << x << " " << y << " " << z << " " << qw << " " << qx << " " << qy << " "<< qz << "" << orientation << std::endl; 
+    odom_outfile << colorName << " " << this->cluster_id << " " << x << " " << y << " " << z << " " << qw << " " << qx << " " << qy << " "<< qz << " " << orientation << std::endl; 
 
 
     OUT_INFO("saving complete!");
@@ -686,8 +692,9 @@ int main(int argc, char **argv)
 #endif
 
   std::string node_name("kinect2_saver");
-  std::string scene_name("Test");
+  std::string scene_name("SN208_3");
   std::string base_name("kinect2");
+  int frame = 1;
 
   if(argc > 1)
   { 
@@ -698,6 +705,10 @@ int main(int argc, char **argv)
       if(argc > 3)
       { 
         base_name  = std::string(argv[3]);
+        if(argc > 4)
+        { 
+          frame  = std::stoi(std::string(argv[3]));
+        }
       }
     }
   }
@@ -713,8 +724,10 @@ int main(int argc, char **argv)
   }
 
   std::string ns = K2_DEFAULT_NS;
-  std::string topicColor = K2_TOPIC_QHD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;
-  std::string topicDepth = K2_TOPIC_QHD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
+  std::string topicColor = K2_TOPIC_QHD K2_TOPIC_IMAGE_COLOR;
+  std::string topicDepth = K2_TOPIC_QHD K2_TOPIC_IMAGE_DEPTH;
+  //std::string topicColor = K2_TOPIC_QHD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;
+  //std::string topicDepth = K2_TOPIC_QHD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
   bool useExact = true;
   bool useCompressed = false;
   Receiver::Mode mode = Receiver::CLOUD;
@@ -795,7 +808,7 @@ int main(int argc, char **argv)
 
   std::string topicSlamOdom("/rtabmap/odom");
 
-  Receiver receiver(topicColor, topicDepth, topicSlamOdom, useExact, useCompressed, scene_name, node_name,base_name);
+  Receiver receiver(topicColor, topicDepth, topicSlamOdom, useExact, useCompressed, scene_name, node_name,base_name, frame);
 
   OUT_INFO("starting receiver...");
   receiver.run(mode);
