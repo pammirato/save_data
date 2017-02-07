@@ -74,7 +74,7 @@ public:
 
 private:
 
-  std::string base_save_path = "/playpen/ammirato/Data/Density/";
+  std::string base_save_path = "/home/phil/Data/RohitData/";
 
   std::string scene_name;
   std::string node_name;
@@ -148,14 +148,14 @@ public:
     scene_name = scene_name_param;
     mkdir((base_save_path + scene_name).c_str(), 0700);
     mkdir((base_save_path + scene_name + "/rgb/").c_str(), 0700);
-    mkdir((base_save_path + scene_name + "/unreg_depth/").c_str(), 0700);
+    mkdir((base_save_path + scene_name + "/raw_depth/").c_str(), 0700);
     mkdir((base_save_path + scene_name + "/cloud/").c_str(), 0700);
     //mkdir(dd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 
     node_name = node_name_param;
     base_name = base_name_param;
 
-    slam_odom_outfile.open(base_save_path + scene_name + "/slam_odom.txt",ios::out | ios::app);
+    slam_odom_outfile.open(base_save_path + scene_name + "/odom.txt",ios::out | ios::app);
 
     topicSlamOdom = topicSlamOdomparam;
 
@@ -398,8 +398,9 @@ private:
 
       if(do_save)
       {
-        std::cout << "Pre Save: " << scene_name << std::endl;
-        std::cout << "Pre Save: " << this->scene_name << std::endl;
+       // ROS_INFO("SAVING..");
+        std::cout << "Saving... " << std::to_string(this->cluster_id) << std::endl;
+        //std::cout << "Pre Save: " << this->scene_name << std::endl;
         createCloud(depth, color, cloud);
         saveCloudAndImages(cloud, color, depth, depthDisp, this->slam_x,this->slam_y,this->slam_z, this->slam_qw, this->slam_qx, this->slam_qy, this->slam_qz,this->slam_orientation,this->slam_odom_outfile);
       }
@@ -594,7 +595,7 @@ private:
     oss.str("");
     //oss << "./" << std::setfill('0') << std::setw(4) << frame;
     std::string color_save_path =  base_save_path + this->scene_name + "/rgb/";
-    std::string depth_save_path =  base_save_path + this->scene_name + "/unreg_depth/";
+    std::string depth_save_path =  base_save_path + this->scene_name + "/raw_depth/";
     std::string cloud_save_path =  base_save_path + this->scene_name + "/cloud/";
   
 
@@ -620,7 +621,7 @@ private:
     //const std::string depthColoredName = baseName + "_depth_colored.png";
 
     OUT_INFO("saving cloud: " << cloudName);
-    writer.writeBinary(cloud_save_path + cloudName, *cloud);
+    //writer.writeBinary(cloud_save_path + cloudName, *cloud);
     OUT_INFO("saving color: " << colorName);
     cv::imwrite(color_save_path + colorName, color, params);
     OUT_INFO("saving depth: " << depthName);
@@ -692,24 +693,16 @@ int main(int argc, char **argv)
 #endif
 
   std::string node_name("kinect2_saver");
-  std::string scene_name("SN208_3");
+  std::string scene_name("Test");
   std::string base_name("kinect2");
   int frame = 1;
 
   if(argc > 1)
   { 
-    node_name  = std::string(argv[1]);
+    scene_name  = std::string(argv[1]);
     if(argc > 2)
     { 
-      scene_name  = std::string(argv[2]);
-      if(argc > 3)
-      { 
-        base_name  = std::string(argv[3]);
-        if(argc > 4)
-        { 
-          frame  = std::stoi(std::string(argv[3]));
-        }
-      }
+      frame  = std::stoi(std::string(argv[2]));
     }
   }
 
@@ -724,8 +717,8 @@ int main(int argc, char **argv)
   }
 
   std::string ns = K2_DEFAULT_NS;
-  std::string topicColor = K2_TOPIC_QHD K2_TOPIC_IMAGE_COLOR;
-  std::string topicDepth = K2_TOPIC_QHD K2_TOPIC_IMAGE_DEPTH;
+  std::string topicColor = K2_TOPIC_HD K2_TOPIC_IMAGE_COLOR;
+  std::string topicDepth = K2_TOPIC_SD K2_TOPIC_IMAGE_DEPTH;
   //std::string topicColor = K2_TOPIC_QHD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;
   //std::string topicDepth = K2_TOPIC_QHD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
   bool useExact = true;
@@ -733,71 +726,7 @@ int main(int argc, char **argv)
   Receiver::Mode mode = Receiver::CLOUD;
 
 
-
-
-  topicColor = K2_TOPIC_HD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;
-  topicDepth = K2_TOPIC_SD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
-  
   mode = Receiver::IMAGE;
-
-
-/*  for(size_t i = 1; i < (size_t)argc; ++i)
-  {
-    std::string param(argv[i]);
-
-    if(param == "-h" || param == "--help" || param == "-?" || param == "--?")
-    {
-      help(argv[0]);
-      ros::shutdown();
-      return 0;
-    }
-    else if(param == "qhd")
-    {
-      topicColor = K2_TOPIC_QHD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;
-      topicDepth = K2_TOPIC_QHD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
-    }
-    else if(param == "hd")
-    {
-      topicColor = K2_TOPIC_HD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;
-      topicDepth = K2_TOPIC_HD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
-    }
-    else if(param == "ir")
-    {
-      topicColor = K2_TOPIC_SD K2_TOPIC_IMAGE_IR K2_TOPIC_IMAGE_RECT;
-      topicDepth = K2_TOPIC_SD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
-    }
-    else if(param == "sd")
-    {
-      topicColor = K2_TOPIC_SD K2_TOPIC_IMAGE_COLOR K2_TOPIC_IMAGE_RECT;
-      topicDepth = K2_TOPIC_SD K2_TOPIC_IMAGE_DEPTH K2_TOPIC_IMAGE_RECT;
-    }
-    else if(param == "approx")
-    {
-      useExact = false;
-    }
-
-    else if(param == "compressed")
-    {
-      useCompressed = true;
-    }
-    else if(param == "image")
-    {
-      mode = Receiver::IMAGE;
-    }
-    else if(param == "cloud")
-    {
-      mode = Receiver::CLOUD;
-    }
-    else if(param == "both")
-    {
-      mode = Receiver::BOTH;
-    }
-    else
-    {
-      ns = param;
-    }
-  }*/
-
 
 
 
@@ -806,7 +735,7 @@ int main(int argc, char **argv)
   OUT_INFO("topic color: " FG_CYAN << topicColor << NO_COLOR);
   OUT_INFO("topic depth: " FG_CYAN << topicDepth << NO_COLOR);
 
-  std::string topicSlamOdom("/rtabmap/odom");
+  std::string topicSlamOdom("/RosAria/odom");
 
   Receiver receiver(topicColor, topicDepth, topicSlamOdom, useExact, useCompressed, scene_name, node_name,base_name, frame);
 
